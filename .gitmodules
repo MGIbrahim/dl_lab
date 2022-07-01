@@ -1,3 +1,6 @@
 [submodule "calvin_env"]
 	path = calvin_env
 	url = https://github.com/mees/calvin_env.git
+[submodule "calvin_env/tacto"]
+	path = calvin_env/tacto
+	url = git@github.com:lukashermann/tacto.git

@@ -1,0 +1,21 @@
+load_dir: gti_demos
+data_path: data
+save_dir: gti_demos
+show_gui: false
+processes: 1
+set_static_cam: false
+env:
+  cameras: ${cameras}
+  show_gui: ${show_gui}
+  use_vr: false
+hydra:
+  run:
+    #dir: ${save_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${save_dir}
+defaults:
+  - env: play_table_env
+  - cameras: static_and_gripper
+  - scene: calvin_scene_GTI
+  - robot: panda_longer_finger
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
