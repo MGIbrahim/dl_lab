@@ -39,7 +39,7 @@ def read_data(path):
     actions = [0] * (len_indices+1)
     for idx in indices:
         t = np.load(f'{path}/episode_{idx:07d}.npz', allow_pickle=True)
-        print(f"episode_{indices[i]:07d}.npz")
+        # print(f"episode_{indices[i]:07d}.npz")
         for d in data:
             if d == 'rgb_static':
                 rgb_static[i]  = t[d][:,:,::-1]
@@ -62,8 +62,8 @@ def random_sampler(rgb_static, rgb_gripper, actions, batch_size, H):
     #rgb_static_H = []
     #rgb_gripper_H = []
     #actions_H = []
-    batch_rgb_static_tensor = torch.zeros((batch_size, H, rgb_static.shape[1], rgb_static.shape[2]))
-    batch_rgb_gripper_tensor = torch.zeros((batch_size, H, rgb_gripper.shape[1], rgb_gripper.shape[2]))
+    batch_rgb_static_tensor = torch.zeros((batch_size, H, rgb_static.shape[1], rgb_static.shape[2], 3))
+    batch_rgb_gripper_tensor = torch.zeros((batch_size, H, rgb_gripper.shape[1], rgb_gripper.shape[2], 3))
     batch_actions_tensor = torch.zeros((batch_size, H, actions.shape[1]))
     
     i = 0
@@ -169,7 +169,7 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
 
 
 if __name__ == "__main__":
-    path = '/home/ibrahimm/Documents/dl_lab/calvin/gti_demos/'
+    path = '/gti_demos'
     rgb_static, rgb_gripper, actions = read_data(path)
     rgb_static_gray = rgb2gray(rgb_static)
     rgb_gripper_gray = rgb2gray(rgb_gripper)
