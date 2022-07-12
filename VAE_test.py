@@ -1,11 +1,14 @@
-#from pl_bolts.datamodules import CIFAR10DataModule
+from pl_bolts.datamodules import CIFAR10DataModule
 from pl_bolts.models.autoencoders.basic_vae.basic_vae_module import VAE
-#from pytorch_lightning import Trainer
-#import matplotlib.pyplot as plt
+from pytorch_lightning import Trainer
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from torch import nn
 from torch.utils.data import DataLoader, Dataset
 import random
+
+
 
 class CustomDataset(Dataset):
     def __init__(self, rgb_static, rgb_gripper, actions):
@@ -39,7 +42,7 @@ def read_data(path):
     actions = [0] * (len_indices+1)
     for idx in indices:
         t = np.load(f'{path}/episode_{idx:07d}.npz', allow_pickle=True)
-        # print(f"episode_{indices[i]:07d}.npz")
+        print(f"episode_{indices[i]:07d}.npz")
         for d in data:
             if d == 'rgb_static':
                 rgb_static[i]  = t[d][:,:,::-1]
@@ -62,8 +65,11 @@ def random_sampler(rgb_static, rgb_gripper, actions, batch_size, H):
     #rgb_static_H = []
     #rgb_gripper_H = []
     #actions_H = []
+    #batch_rgb_static_tensor = torch.zeros((batch_size, H, rgb_static.shape[1], rgb_static.shape[2]))
     batch_rgb_static_tensor = torch.zeros((batch_size, H, rgb_static.shape[1], rgb_static.shape[2], 3))
+    #batch_rgb_gripper_tensor = torch.zeros((batch_size, H, rgb_gripper.shape[1], rgb_gripper.shape[2]))
     batch_rgb_gripper_tensor = torch.zeros((batch_size, H, rgb_gripper.shape[1], rgb_gripper.shape[2], 3))
+    #batch_actions_tensor = torch.zeros((batch_size, H, actions.shape[1]))
     batch_actions_tensor = torch.zeros((batch_size, H, actions.shape[1]))
     
     i = 0
@@ -87,7 +93,7 @@ def random_sampler(rgb_static, rgb_gripper, actions, batch_size, H):
         i+=1
 
     #return rgb_static_H, rgb_gripper_H, actions_H
-    return batch_rgb_static_tensor, batch_rgb_gripper_tensor, batch_actions_tensor
+    return batch_rgb_static_tensor#, batch_rgb_gripper_tensor, batch_actions_tensor
 
 def rgb2gray(rgb):
     """ 
@@ -96,15 +102,12 @@ def rgb2gray(rgb):
     gray = np.dot(rgb[...,:3], [0.2125, 0.7154, 0.0721])
     return gray.astype('float32') 
 
-#def preprocessing(rgb_static, rgb_gripper):
-
-    #Converting the gripper and static images to grayscale
-    #rgb_static_gray = rgb2gray(rgb_static)
-    #rgb_gripper_gray = rgb2gray(rgb_gripper)
-    
-    #return rgb_static_gray, rgb_gripper_gray
-
-
+def sample(mu, log_var):
+        std = torch.exp(log_var / 2)
+        p = torch.distributions.Normal(torch.zeros_like(mu), torch.ones_like(std))
+        q = torch.distributions.Normal(mu, std)
+        z = q.rsample()
+        return p, q, z
 
 def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
     
@@ -115,19 +118,46 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
     #rgb_static, rgb_gripper, actions = data
     #print(rgb_static, rgb_gripper, actions)
     
-    goal_state_rgb_static_H = rgb_static[-1]
-    goal_state_rgb_gripper_H = rgb_gripper[-1]
-    goal_state_actions_H = actions[-1]
-    
+    #goal_state_rgb_static_H = rgb_static[-1]
+    #goal_state_rgb_gripper_H = rgb_gripper[-1]
+    #goal_state_actions_H = actions[-1]
+
+    vae = VAE(200, enc_type= "resnet18")
+    vae = vae.from_pretrained("cifar10-resnet18")
+
     #Training Loop:
     n_iter = 300
     H = 15
     batch_size = 32
-    for epoch in range(n_iter):
-        batch_rgb_static_tensor, batch_rgb_gripper_tensor, batch_actions_tensor = random_sampler(rgb_static, rgb_gripper, actions, batch_size, H)
-        vae = VAE(200, enc_type= "resnet18")
-        fw_pass = vae.forward(batch_rgb_static_tensor)
-        print(fw_pass)
+    #for epoch in range(n_iter):
+    batch_rgb_static_tensor = random_sampler(rgb_static, rgb_gripper, actions, batch_size, H)
+    batch_rgb_static_first_obs = torch.movedim(batch_rgb_static_tensor[:,0], 3, 1) # torch.Size([15, 3, 200, 200])
+    batch_rgb_static_last_obs = torch.movedim(batch_rgb_static_tensor[:,-1], 3, 1) # torch.Size([15, 3, 200, 200])
+    
+    fw_pass_first, x_first, z_first = vae.forward(batch_rgb_static_first_obs) # First Observation State of size batch_size
+    fw_pass_last, x_last, z_last = vae.forward(batch_rgb_static_last_obs) # Last Observation State of size batch_size
+    
+    x = torch.zeros((batch_size, x_first.shape[1]*2))
+
+    for i in range(x_first.shape[0]):
+        x[i] = torch.cat((x_first[i], x_last[i]))
+    
+    enc_out_dim: int =  1024  # Original Number 512
+    latent_dim: int = 512   # Original Number 256
+
+    fc_mu = nn.Linear(enc_out_dim, latent_dim)
+    fc_var = nn.Linear(enc_out_dim, latent_dim)
+
+    mu = fc_mu(x)
+    log_var = fc_var(x)
+    p, q, z = sample(mu, log_var)
+
+    #print(fw_pass_first)
+    print(z_first)
+
+    #print(fw_pass_last)
+    print(z_last)
+    
     
     
     
@@ -169,15 +199,16 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
 
 
 if __name__ == "__main__":
-    path = '/gti_demos'
+    path = '/home/ibrahimm/Documents/dl_lab/calvin/gti_demos/'
     rgb_static, rgb_gripper, actions = read_data(path)
-    rgb_static_gray = rgb2gray(rgb_static)
-    rgb_gripper_gray = rgb2gray(rgb_gripper)
+    #rgb_static_gray = rgb2gray(rgb_static)
+    #rgb_gripper_gray = rgb2gray(rgb_gripper)
     
 
 
 
-    VariationalAutoEncoder(rgb_static_gray, rgb_gripper_gray, actions)
+    #VariationalAutoEncoder(rgb_static_gray, rgb_gripper_gray, actions)
+    VariationalAutoEncoder(rgb_static, rgb_gripper, actions)
 
 
     
