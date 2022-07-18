@@ -106,10 +106,19 @@ class custom_VAE(LightningModule):
 
         return self.load_from_checkpoint(custom_VAE.pretrained_urls[checkpoint_name], strict=False)
 
-    def forward(self, x):
+    #def forward(self, x):
+    #    x = self.encoder(x)
+    #    mu = self.fc_mu(x)
+    #    log_var = self.fc_var(x)
+    #    p, q, z = self.sample(mu, log_var)
+    #    return self.decoder(z)
+
+    def forward(self, x, y):
         x = self.encoder(x)
-        mu = self.fc_mu(x)
-        log_var = self.fc_var(x)
+        y = self.encoder(y)
+        resnet_out = torch.cat((x, y), dim = 1)
+        mu = self.fc_mu(resnet_out)
+        log_var = self.fc_var(resnet_out)
         p, q, z = self.sample(mu, log_var)
         return self.decoder(z)
 
