@@ -112,9 +112,9 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
 
     vae.eval()
     #sg_reconstructed = vae(sg) # for sg_weights
-    sg_reconstructed = vae(sg, st) # for sg_st_weights
+    sg_reconstructed, zg = vae(sg, st) # for sg_st_weights
 
-    return(sg, sg_reconstructed)
+    return sg, sg_reconstructed, zg
 
 
 if __name__ == "__main__":
@@ -124,8 +124,7 @@ if __name__ == "__main__":
     batch_rgb_static_tensor_resized = resize(rgb_static)
 
 
-    X, X_hat = VariationalAutoEncoder(batch_rgb_static_tensor_resized, rgb_gripper, actions)
-    #X.type(torch.uint8)
+    sg, sg_reconstructed, zg  = VariationalAutoEncoder(batch_rgb_static_tensor_resized, rgb_gripper, actions)
 
     fig, axes = plt.subplots(2, 10, figsize=(10, 2))
     axes[0][0].set_ylabel('Real', fontsize=12)
@@ -134,12 +133,12 @@ if __name__ == "__main__":
     for i in range(10):
   
         ax_real = axes[0][i]
-        ax_real.imshow((X[i].type(torch.uint8)).permute(1,2,0))
+        ax_real.imshow((sg[i].type(torch.uint8)).permute(1,2,0))
         ax_real.get_xaxis().set_visible(False)
         ax_real.get_yaxis().set_visible(False)
 
         ax_gen = axes[1][i]
-        ax_gen.imshow((X_hat[i].type(torch.uint8)).permute(1,2,0))
+        ax_gen.imshow((sg_reconstructed[i].type(torch.uint8)).permute(1,2,0))
         ax_gen.get_xaxis().set_visible(False)
         ax_gen.get_yaxis().set_visible(False)
 

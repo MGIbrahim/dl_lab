@@ -120,7 +120,7 @@ class custom_VAE(LightningModule):
         mu = self.fc_mu(resnet_out)
         log_var = self.fc_var(resnet_out)
         p, q, z = self.sample(mu, log_var)
-        return self.decoder(z)
+        return self.decoder(z), z
 
     def _run_step(self, x, y):
         x = self.encoder(x)
