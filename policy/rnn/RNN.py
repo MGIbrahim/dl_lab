@@ -1,24 +1,26 @@
-import torch.nn
-import sys
-sys.path.append('../')
+import torch
+import torch.nn as nn
 
-from network import Network
+class RNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(RNN, self).__init__()
 
-class RNN:
+        self.hidden_size = hidden_size
+
+        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+        self.i2o = nn.Linear(input_size + hidden_size, output_size)
+
+    def forward(self, input, hidden):
+        combined = torch.cat((input, hidden), 1)
+        hidden = self.i2h(combined)
+        output = self.i2o(combined)
+        # output = self.softmax(output)
+        return output, hidden
+
+    def initHidden(self):
+        return torch.zeros(32, self.hidden_size)
     
-    def __init__(self,input_size, hidden_size, output_size):
-        self.network = Network(input_size, hidden_size, output_size)
-        self.criterion = torch.nn.MSELoss()
+
+
         
-    def update(self,h,input,actions):
-        hidden = self.network.initHidden()
-
-        # rnn.zero_grad()
-
-        for i in range(h):
-            output, hidden = self.network(input, hidden)
-
-        loss = self.criterion(output,actions)
-        loss.backward()
-
-        return output
+        
