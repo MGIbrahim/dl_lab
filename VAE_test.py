@@ -14,6 +14,8 @@ import cv2
 from custom_VAE import custom_VAE
 
 
+
+
 class CustomDataset(Dataset):
     def __init__(self, batch_rgb_static_last_obs, batch_rgb_static_first_obs):
         self.batch_rgb_static_last_obs = batch_rgb_static_last_obs
@@ -118,6 +120,12 @@ def rgb2gray(rgb):
     gray = np.dot(rgb[...,:3], [0.2125, 0.7154, 0.0721])
     return gray.astype('float32') 
 
+def sample(mu, log_var):
+        std = torch.exp(log_var / 2)
+        p = torch.distributions.Normal(torch.zeros_like(mu), torch.ones_like(std))
+        q = torch.distributions.Normal(mu, std)
+        z = q.rsample()
+        return p, q, z
 def resize(rgb_static):
     """ 
     Resizes rgb_static images from (200,200) to (32,32)
