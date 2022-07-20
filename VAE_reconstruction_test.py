@@ -13,15 +13,17 @@ from PIL import Image
 from custom_VAE import custom_VAE
 
 class CustomDataset(Dataset):
-    def __init__(self, batch_rgb_static_last_obs, batch_rgb_static_first_obs):
+    def __init__(self, batch_rgb_static_last_obs, batch_rgb_static_first_obs, batch_rgb_static_tensor, actions):
         self.batch_rgb_static_last_obs = batch_rgb_static_last_obs
         self.batch_rgb_static_first_obs = batch_rgb_static_first_obs
+        self.batch_rgb_static_tensor = batch_rgb_static_tensor
+        self.actions = actions
     
     def __len__(self):
         return self.batch_rgb_static_last_obs.shape[0]
         
     def __getitem__(self, index):
-        return self.batch_rgb_static_last_obs[index], self.batch_rgb_static_first_obs[index]
+        return self.batch_rgb_static_last_obs[index], self.batch_rgb_static_first_obs[index], self.batch_rgb_static_tensor[index], self.actions[index]  
 
 #Loading GTI demonstrations
 def read_data(path):
@@ -50,21 +52,23 @@ def read_data(path):
     return np.array(rgb_static), np.array(rgb_gripper), np.array(actions)
 
 def random_sampler(rgb_static, rgb_gripper, actions, batch_size, H):
+    
     # H is the sample length
     indices = list(range(len(rgb_static) - H))
 
     random_indices = random.choices(indices, k = len(rgb_static) * 3) # Create a list of random indices with length of rgb_static * 3 = 3576 * 3
 
     batch_rgb_static_tensor = torch.zeros((len(rgb_static) * 3, H, 3, rgb_static.shape[2], rgb_static.shape[3]), dtype=torch.uint8)
-    batch_rgb_gripper_tensor = torch.zeros((batch_size, H, 3, rgb_gripper.shape[2], rgb_gripper.shape[3]), dtype=torch.uint8)
-    batch_actions_tensor = torch.zeros((batch_size, H, actions.shape[1]))
+    #batch_rgb_gripper_tensor = torch.zeros((batch_size, H, 3, rgb_gripper.shape[2], rgb_gripper.shape[3]), dtype=torch.uint8)
+    batch_actions_tensor = torch.zeros((len(rgb_static) * 3, H, actions.shape[1]))
     
     i = 0
     for index in random_indices:
         batch_rgb_static_tensor[i] = rgb_static[index:index + H]
+        batch_actions_tensor[i] = torch.from_numpy(actions[index:index + H])
         i+=1
 
-    return batch_rgb_static_tensor
+    return batch_rgb_static_tensor, batch_actions_tensor 
 
 def resize(rgb_static):
     """ 
@@ -97,18 +101,18 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
     H = 15
     batch_size = 32
 
-    batch_rgb_static_tensor = random_sampler(rgb_static, rgb_gripper, actions, batch_size, H)
+    batch_rgb_static_tensor, batch_actions_tensor = random_sampler(rgb_static, rgb_gripper, actions, batch_size, H)
 
     batch_rgb_static_first_obs = batch_rgb_static_tensor[:,0].float()
     batch_rgb_static_last_obs = batch_rgb_static_tensor[:,-1].float()
 
     #print(batch_rgb_static_last_obs, batch_rgb_static_first_obs)
 
-    dataset = CustomDataset(batch_rgb_static_last_obs, batch_rgb_static_first_obs)
+    dataset = CustomDataset(batch_rgb_static_last_obs, batch_rgb_static_first_obs, batch_rgb_static_tensor, batch_actions_tensor)
 
     train_dataloader = DataLoader(dataset, batch_size = 32, num_workers = 2)
 
-    sg, st = next(iter(train_dataloader))
+    sg, st, _ , actions = next(iter(train_dataloader))
 
     vae.eval()
     #sg_reconstructed = vae(sg) # for sg_weights
@@ -118,7 +122,7 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
 
 
 if __name__ == "__main__":
-    path = '/home/ibrahimm/Documents/dl_lab/calvin/gti_demos/'
+    path = './gti_demos/'
     rgb_static, rgb_gripper, actions = read_data(path)
     
     batch_rgb_static_tensor_resized = resize(rgb_static)
