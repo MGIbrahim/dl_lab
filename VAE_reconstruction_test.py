@@ -112,6 +112,9 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
 
     train_dataloader = DataLoader(dataset, batch_size = 32, num_workers = 2)
 
+    #for step, (sg, st, _ , actions) in enumerate(train_dataloader):
+    #    print("in loop")
+
     sg, st, _ , actions = next(iter(train_dataloader))
 
     vae.eval()
