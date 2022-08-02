@@ -24,7 +24,7 @@ class CustomDataset(Dataset):
         return self.batch_rgb_static_last_obs.shape[0]
         
     def __getitem__(self, index):
-        return self.batch_rgb_static_last_obs[index], self.batch_rgb_static_first_obs[index]#, self.rgb_static_tensor[index], self.actions[index]
+        return self.batch_rgb_static_last_obs[index], self.batch_rgb_static_first_obs[index], self.rgb_static_tensor[index], self.actions[index]
 
 #Loading GTI demonstrations
 def read_data(path):
@@ -93,7 +93,7 @@ def resize(rgb_static):
     Resizes rgb_static images from (200,200) to (32,32)
     """
 
-    rgb_static_tensor_resized = torch.zeros((len(rgb_static), 3, 32, 32), dtype=torch.uint8)
+    batch_rgb_static_tensor_resized = torch.zeros((len(rgb_static), 3, 32, 32), dtype=torch.uint8)
     
     transform = T.Compose([
         T.Resize(size = (32, 32)),
@@ -104,30 +104,33 @@ def resize(rgb_static):
 
         img = Image.fromarray(rgb_static[i][:,:,::-1])
 
-        rgb_static_tensor_resized[i] = transform(img)
+        batch_rgb_static_tensor_resized[i] = transform(img)
 
-    return rgb_static_tensor_resized
+    return batch_rgb_static_tensor_resized
 
 def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
     vae = custom_VAE(32, enc_type= "resnet18")
+    vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_st_step_actions_weights/epoch=10368-step=394022.ckpt') #sg_st_ste_actions_weights
 
     H = 15
 
     rgb_static_tensor, actions_tensor, robot_obs_tensor   = random_sampler(rgb_static, actions, robot_obs, H)
 
-    rgb_static_first_obs = rgb_static_tensor[:,0].float()
-    rgb_static_last_obs = rgb_static_tensor[:,-1].float()
+    batch_rgb_static_first_obs = rgb_static_tensor[:,0].float()
+    batch_rgb_static_last_obs = rgb_static_tensor[:,-1].float()
 
-    dataset = CustomDataset(rgb_static_last_obs, rgb_static_first_obs, rgb_static_tensor, actions_tensor)
+    dataset = CustomDataset(batch_rgb_static_last_obs, batch_rgb_static_first_obs, rgb_static_tensor, actions_tensor)
 
     train_dataloader = DataLoader(dataset, batch_size = 32, shuffle= True, num_workers = 2)
 
-    print(rgb_static_last_obs, rgb_static_first_obs)
+    sg, st, _ , actions = next(iter(train_dataloader))
 
-    #trainer = Trainer()
-    trainer = Trainer(max_epochs = 15000, log_every_n_steps = 10)
-    trainer.fit(vae, train_dataloader)
+    vae.eval()
+    #sg_reconstructed = vae(sg) # for sg_weights
+    sg_reconstructed, zg = vae(sg, st) # for sg_st_weights
+
+    return sg, sg_reconstructed, zg
 
 
     print(vae)
@@ -138,7 +141,24 @@ if __name__ == "__main__":
     
     rgb_static_tensor_resized = resize(rgb_static)
 
-    VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, actions, robot_obs)
+    sg, sg_reconstructed, zg = VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, actions, robot_obs)
 
+    fig, axes = plt.subplots(2, 10, figsize=(10, 2))
+    axes[0][0].set_ylabel('Real', fontsize=12)
+    axes[1][0].set_ylabel('Generated', fontsize=12)
+
+    for i in range(10):
+  
+        ax_real = axes[0][i]
+        ax_real.imshow((sg[i].type(torch.uint8)).permute(1,2,0))
+        ax_real.get_xaxis().set_visible(False)
+        ax_real.get_yaxis().set_visible(False)
+
+        ax_gen = axes[1][i]
+        ax_gen.imshow((sg_reconstructed[i].type(torch.uint8)).permute(1,2,0))
+        ax_gen.get_xaxis().set_visible(False)
+        ax_gen.get_yaxis().set_visible(False)
+
+    plt.show()
 
     
