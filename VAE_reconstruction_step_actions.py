@@ -93,7 +93,7 @@ def resize(rgb_static):
     Resizes rgb_static images from (200,200) to (32,32)
     """
 
-    batch_rgb_static_tensor_resized = torch.zeros((len(rgb_static), 3, 32, 32), dtype=torch.uint8)
+    rgb_static_tensor_resized = torch.zeros((len(rgb_static), 3, 32, 32), dtype=torch.uint8)
     
     transform = T.Compose([
         T.Resize(size = (32, 32)),
@@ -104,9 +104,9 @@ def resize(rgb_static):
 
         img = Image.fromarray(rgb_static[i][:,:,::-1])
 
-        batch_rgb_static_tensor_resized[i] = transform(img)
+        rgb_static_tensor_resized[i] = transform(img)
 
-    return batch_rgb_static_tensor_resized
+    return rgb_static_tensor_resized
 
 def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
@@ -117,10 +117,10 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
     rgb_static_tensor, actions_tensor, robot_obs_tensor   = random_sampler(rgb_static, actions, robot_obs, H)
 
-    batch_rgb_static_first_obs = rgb_static_tensor[:,0].float()
-    batch_rgb_static_last_obs = rgb_static_tensor[:,-1].float()
+    rgb_static_first_obs = rgb_static_tensor[:,0].float()
+    rgb_static_last_obs = rgb_static_tensor[:,-1].float()
 
-    dataset = CustomDataset(batch_rgb_static_last_obs, batch_rgb_static_first_obs, rgb_static_tensor, actions_tensor)
+    dataset = CustomDataset(rgb_static_last_obs, rgb_static_first_obs, rgb_static_tensor, actions_tensor)
 
     train_dataloader = DataLoader(dataset, batch_size = 32, shuffle= True, num_workers = 2)
 
