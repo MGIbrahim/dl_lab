@@ -63,12 +63,12 @@ def random_sampler(rgb_static, actions, robot_obs, H):
     #indices = [141,3716], len = 3576
     # range of indices starts from 141 to 3716 - (H * 10) as steps of 10 are taken
     # and to prevent getting into index out of bounds error 
-    indices = list(range(len(rgb_static) - H * 10))
+    #indices = list(range(len(rgb_static) - H * 10))
+    indices = [2723, 1081, 141, 2042, 912, 364, 469, 795, 637, 1362, 2564, 1524, 2225, 3356, 2417, 2890, 3030, 3176, 1025]
 
     random_indices = random.choices(indices, k = len(rgb_static))
 
     rgb_static_tensor = torch.zeros((len(rgb_static), H, 3, rgb_static.shape[2], rgb_static.shape[3]), dtype=torch.uint8)
-    #rgb_gripper_tensor = torch.zeros((len(rgb_static), H, 3, rgb_gripper.shape[2], rgb_gripper.shape[2]), dtype=torch.uint8)
     actions_tensor = torch.zeros((len(rgb_static), H, actions.shape[1]), dtype=torch.float64)
     robot_obs_tensor = torch.zeros((len(rgb_static), H, robot_obs.shape[1],), dtype=torch.float64)
 
@@ -122,7 +122,7 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
     dataset = CustomDataset(rgb_static_last_obs, rgb_static_first_obs, rgb_static_tensor, actions_tensor)
 
-    train_dataloader = DataLoader(dataset, batch_size = 32, shuffle= True, num_workers = 2)
+    train_dataloader = DataLoader(dataset, batch_size = 15, shuffle= True, num_workers = 2)
 
     sg, st, _ , actions = next(iter(train_dataloader))
 
@@ -132,16 +132,14 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
     return sg, sg_reconstructed, zg
 
-
-    print(vae)
-
 if __name__ == "__main__":
     path = './gti_demos/'
-    rgb_static, rgb_gripper, actions,robot_obs = read_data(path)
+    rgb_static, rgb_gripper, actions, robot_obs = read_data(path)
     
     rgb_static_tensor_resized = resize(rgb_static)
 
     sg, sg_reconstructed, zg = VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, actions, robot_obs)
+
 
     fig, axes = plt.subplots(2, 10, figsize=(10, 2))
     axes[0][0].set_ylabel('Real', fontsize=12)
