@@ -1,4 +1,5 @@
 #from pl_bolts.datamodules import CIFAR10DataModule
+from lib2to3.pgen2.literals import simple_escapes
 from pl_bolts.models.autoencoders import VAE
 from pytorch_lightning import Trainer
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from torchvision.models import resnet18
 import torchvision.transforms as T
 from PIL import Image
 from custom_VAE import custom_VAE
+import cv2
 
 
 class CustomDataset(Dataset):
@@ -64,7 +66,7 @@ def random_sampler(rgb_static, actions, robot_obs, H):
     # range of indices starts from 141 to 3716 - (H * 10) as steps of 10 are taken
     # and to prevent getting into index out of bounds error 
     #indices = list(range(len(rgb_static) - H * 10))
-    indices = [2723, 1081, 141, 2042, 912, 364, 469, 795, 637, 1362, 2564, 1524, 2225, 3356, 2417, 2890, 3030, 3176, 1025]
+    indices = np.array([2723, 1081, 141, 2042, 912, 364, 469, 795, 637, 1362, 2564, 1524, 2225, 3356, 2417, 2890, 3030, 3176, 1025]) - 141
 
     random_indices = random.choices(indices, k = len(rgb_static))
 
@@ -105,13 +107,45 @@ def resize(rgb_static):
         img = Image.fromarray(rgb_static[i][:,:,::-1])
 
         rgb_static_tensor_resized[i] = transform(img)
-
     return rgb_static_tensor_resized
+
+def intersection(rgb_static, robot_obs):
+    H  = 15
+
+    task_a = [141 - 141, 469 - 141, 637 - 141, 1362 - 141, 2225 - 141, 2417 - 141, 2890 - 141, 3030 - 141, 3176 - 141] # block in drawer
+    task_b = [364 - 141, 795 - 141, 912 - 141, 1081 - 141, 1025 - 141, 2042 - 141, 2564 - 141, 2723 - 141, 3356 - 141] # block on table
+
+    rgb_static_seq_a = np.zeros((len(task_a), H, 3, 32, 32), dtype=np.uint8)
+    rgb_static_seq_b = np.zeros((len(task_b), H, 3, 32, 32), dtype=np.uint8)
+
+    robot_obs_seq_a = np.zeros((len(task_a), H, 6))
+    robot_obs_seq_b = np.zeros((len(task_b), H, 6))
+
+    similarity = []
+
+    # i : Task Index, k : 
+    for i in range(len(task_a)):
+        rgb_static_seq_a[i] = rgb_static[task_a[i] : task_a[i] + H * 10 : 10]
+        rgb_static_seq_b[i] = rgb_static[task_b[i] : task_b[i] + H * 10 : 10]
+        robot_obs_seq_a[i] = robot_obs[task_a[i] : task_a[i] + H * 10 : 10][:,:6]
+        robot_obs_seq_b[i] = robot_obs[task_b[i] : task_b[i] + H * 10 : 10][:,:6]
+
+        for k in range(robot_obs_seq_a.shape[1]):
+            for l in range(robot_obs_seq_b.shape[1]):
+                diff_sum = (np.abs(robot_obs_seq_a[i,k] -  robot_obs_seq_b[i,l])).sum()
+                
+                if diff_sum < 1.2:
+                   similarity.append((i,k,l)) 
+                
+            
+
+    return
+
 
 def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
     vae = custom_VAE(32, enc_type= "resnet18")
-    vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_st_step_actions_weights/epoch=10368-step=394022.ckpt') #sg_st_ste_actions_weights
+    vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_st_step_weights_start_idx/epoch=3000-step=114038.ckpt') #sg_st_ste_actions_weights
 
     H = 15
 
@@ -138,8 +172,12 @@ if __name__ == "__main__":
     
     rgb_static_tensor_resized = resize(rgb_static)
 
-    sg, sg_reconstructed, zg = VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, actions, robot_obs)
+    # cv2.imshow('rgb_static', rgb_static[0])
+    # cv2.waitKey(0)
 
+    intersection(rgb_static_tensor_resized, robot_obs)
+
+    sg, sg_reconstructed, zg = VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, actions, robot_obs)
 
     fig, axes = plt.subplots(2, 10, figsize=(10, 2))
     axes[0][0].set_ylabel('Real', fontsize=12)

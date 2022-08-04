@@ -64,7 +64,7 @@ def random_sampler(rgb_static, actions, robot_obs, H):
     # range of indices starts from 141 to 3716 - (H * 10) as steps of 10 are taken
     # and to prevent getting into index out of bounds error 
     #indices = list(range(len(rgb_static) - H * 10))
-    indices = [2723, 1081, 141, 2042, 912, 364, 469, 795, 637, 1362, 2564, 1524, 2225, 3356, 2417, 2890, 3030, 3176, 1025]
+    indices = np.array([2723, 1081, 141, 2042, 912, 364, 469, 795, 637, 1362, 2564, 1524, 2225, 3356, 2417, 2890, 3030, 3176, 1025]) - 141
 
     random_indices = random.choices(indices, k = len(rgb_static))
 
