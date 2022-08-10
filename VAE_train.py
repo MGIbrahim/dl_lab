@@ -14,17 +14,17 @@ from custom_VAE import custom_VAE
 
 
 class CustomDataset(Dataset):
-    def __init__(self, batch_rgb_static_last_obs, batch_rgb_static_first_obs, rgb_static_tensor, actions):
+    def __init__(self, batch_rgb_static_last_obs, batch_rgb_static_first_obs, rgb_static_tensor, rel_actions):
         self.batch_rgb_static_last_obs = batch_rgb_static_last_obs
         self.batch_rgb_static_first_obs = batch_rgb_static_first_obs
         self.rgb_static_tensor = rgb_static_tensor
-        self.actions = actions
+        self.rel_actions = rel_actions
     
     def __len__(self):
         return self.batch_rgb_static_last_obs.shape[0]
         
     def __getitem__(self, index):
-        return self.batch_rgb_static_last_obs[index], self.batch_rgb_static_first_obs[index]#, self.rgb_static_tensor[index], self.actions[index]
+        return self.batch_rgb_static_last_obs[index], self.batch_rgb_static_first_obs[index]#, self.rgb_static_tensor[index], self.rel_actions[index]
 
 #Loading GTI demonstrations
 def read_data(path):
@@ -56,7 +56,7 @@ def read_data(path):
         scene_obs[i] = t['scene_obs']
         i+=1
     
-    return np.array(rgb_static), np.array(rgb_gripper), np.array(actions), np.array(robot_obs)
+    return np.array(rgb_static), np.array(rgb_gripper), np.array(rel_actions), np.array(robot_obs)
  
 def random_sampler(rgb_static, actions, robot_obs, H):
     # H is the sample length
@@ -80,6 +80,26 @@ def random_sampler(rgb_static, actions, robot_obs, H):
         i+=1
 
     return rgb_static_tensor, actions_tensor, robot_obs_tensor 
+
+
+def random_sampler_all(rgb_static, rgb_gripper, rel_actions, H):
+    # H is the sample length
+    #indices = [141,3716]
+    indices = list(range(len(rgb_static) - H))
+    #batch_indices = random.sample(indices, batch_size)
+
+    random_indices = random.choices(indices, k = len(rgb_static) * 3) # Create a list of random indices with length of rgb_static * 3 = 3576 * 3
+
+    rgb_static_tensor = torch.zeros((len(rgb_static) * 3, H, 3, rgb_static.shape[2], rgb_static.shape[3]), dtype=torch.uint8)
+    rel_actions_tensor = torch.zeros((len(rgb_static) * 3, H, rel_actions.shape[1]), dtype=torch.float64)
+    
+    i = 0
+    for index in random_indices:
+        rgb_static_tensor[i] = rgb_static[index:index + H]
+        rel_actions_tensor[i] = torch.from_numpy(rel_actions[index : index + H])
+        i+=1
+
+    return rgb_static_tensor, rel_actions_tensor
 
 def rgb2gray(rgb):
     """ 
@@ -108,16 +128,17 @@ def resize(rgb_static):
 
     return rgb_static_tensor_resized
 
-def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
+def VariationalAutoEncoder(rgb_static, rgb_gripper, rel_actions, robot_obs):
 
     vae = custom_VAE(32, enc_type= "resnet18")
 
-    rgb_static_tensor, actions_tensor, robot_obs_tensor = random_sampler(rgb_static, actions, robot_obs, H = 15)
+    #rgb_static_tensor, actions_tensor, robot_obs_tensor = random_sampler(rgb_static, actions, robot_obs, H = 15)
+    rgb_static_tensor, rel_actions_tensor = random_sampler_all(rgb_static, rgb_gripper, rel_actions, H = 15)
 
     rgb_static_first_obs = rgb_static_tensor[:,0].float()
     rgb_static_last_obs = rgb_static_tensor[:,-1].float()
 
-    dataset = CustomDataset(rgb_static_last_obs, rgb_static_first_obs, rgb_static_tensor, actions_tensor)
+    dataset = CustomDataset(rgb_static_last_obs, rgb_static_first_obs, rgb_static_tensor, rel_actions_tensor)
 
     train_dataloader = DataLoader(dataset, batch_size = 32, shuffle= True, num_workers = 2)
 
@@ -129,11 +150,11 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
 if __name__ == "__main__":
     path = './gti_demos/'
-    rgb_static, rgb_gripper, actions,robot_obs = read_data(path)
+    rgb_static, rgb_gripper, rel_actions, robot_obs = read_data(path)
     
     rgb_static_tensor_resized = resize(rgb_static)
 
-    VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, actions, robot_obs)
+    VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, rel_actions, robot_obs)
 
 
     

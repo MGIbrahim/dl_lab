@@ -180,6 +180,7 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
     print(batch_rgb_static_last_obs, batch_rgb_static_first_obs)
 
     trainer = Trainer()
+    #trainer = Trainer(gpus=3, max_epochs=15000)
     trainer.fit(vae, train_dataloader)
 
     #vae = VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/lightning_logs/version_2/checkpoints/epoch=204-step=68879.ckpt')

@@ -95,7 +95,7 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
 
     vae = custom_VAE(32, enc_type= "resnet18")
     #vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_weights/epoch=5563-step=1869503.ckpt') #sg_weights
-    vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_st_weights/epoch=9119-step=1021440.ckpt') #sg_st_weights
+    vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_st_step_actions_weights/epoch=10368-step=394022.ckpt') #sg_st_weights
 
 
     H = 15
@@ -110,10 +110,10 @@ def VariationalAutoEncoder(rgb_static, rgb_gripper, actions):
 
     dataset = CustomDataset(batch_rgb_static_last_obs, batch_rgb_static_first_obs, batch_rgb_static_tensor, batch_actions_tensor)
 
-    train_dataloader = DataLoader(dataset, batch_size = 32, num_workers = 2)
+    train_dataloader = DataLoader(dataset, batch_size = 1, num_workers = 2)
 
     #for step, (sg, st, _ , actions) in enumerate(train_dataloader):
-    #    print("in loop")
+        #print("in loop")
 
     sg, st, _ , actions = next(iter(train_dataloader))
 

@@ -74,7 +74,7 @@ class custom_VAE(LightningModule):
         self.enc_out_dim = enc_out_dim
         self.latent_dim = latent_dim
         self.input_height = input_height
-
+        
         valid_encoders = {
             "resnet18": {
                 "enc": resnet18_encoder,

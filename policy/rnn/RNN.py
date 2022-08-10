@@ -2,7 +2,7 @@ import torch.nn
 import sys
 sys.path.append('../')
 
-from network import Network
+#from network import Network
 
 class RNN:
     

@@ -145,7 +145,7 @@ def intersection(rgb_static, robot_obs):
 def VariationalAutoEncoder(rgb_static, rgb_gripper, actions, robot_obs):
 
     vae = custom_VAE(32, enc_type= "resnet18")
-    vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_st_step_weights_start_idx/epoch=3000-step=114038.ckpt') #sg_st_ste_actions_weights
+    vae = custom_VAE.load_from_checkpoint('/home/ibrahimm/Documents/dl_lab/calvin/sg_st_weights/version_4/checkpoints/epoch=14999-step=1680000.ckpt') #sg_st_ste_actions_weights
 
     H = 15
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     # cv2.imshow('rgb_static', rgb_static[0])
     # cv2.waitKey(0)
 
-    intersection(rgb_static_tensor_resized, robot_obs)
+    #intersection(rgb_static_tensor_resized, robot_obs)
 
     sg, sg_reconstructed, zg = VariationalAutoEncoder(rgb_static_tensor_resized, rgb_gripper, actions, robot_obs)
 
